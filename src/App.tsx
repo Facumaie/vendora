@@ -41,6 +41,9 @@ export default function App() {
             <Route path="/ventas" element={<SalesPage />} />
             <Route path="/reportes" element={<ReportsPage />} />
             <Route path="/configuracion" element={<SettingsPage />} />
+            import SuperAdminPage from './pages/superadmin/SuperAdminPage';
+// ...
+<Route path="/superadmin" element={<SuperAdminPage />} />
           </Route>
         </Route>
       </Routes>
