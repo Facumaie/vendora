@@ -1,0 +1,87 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function dir() {
+      return get(/databases/$(database)/documents/userDirectory/$(request.auth.uid)).data;
+    }
+    function isMember(t)     { return signedIn() && dir().tenantId == t; }
+    function myRole()        { return dir().role; }
+    function isAdmin(t)      { return isMember(t) && myRole() == 'admin'; }
+    function isSupervisor(t) { return isMember(t) && myRole() in ['admin', 'supervisor']; }
+
+    match /userDirectory/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      // Solo se crea durante el registro o al aceptar una invitación
+      allow create: if signedIn() && request.auth.uid == uid;
+      allow update, delete: if false;
+    }
+
+    match /tenants/{t} {
+      allow read: if isMember(t);
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isAdmin(t);
+      allow delete: if false;
+
+      match /users/{uid} {
+        allow read: if isMember(t);
+        allow create: if isAdmin(t) || (signedIn() && request.auth.uid == uid);
+        allow update: if isAdmin(t) || (isMember(t) && request.auth.uid == uid);
+        allow delete: if false; // baja lógica con active:false
+      }
+
+      match /products/{id} {
+        allow read: if isMember(t);
+        allow create, update: if isSupervisor(t)
+          && request.resource.data.costPrice >= 0
+          && request.resource.data.salePrice >= 0
+          && request.resource.data.stock >= 0;
+        allow delete: if false;
+      }
+
+      match /categories/{id} {
+        allow read: if isMember(t);
+        allow write: if isSupervisor(t);
+      }
+
+      match /sales/{id} {
+        allow read: if isMember(t);
+        allow create: if isMember(t)
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.total >= 0;
+        allow update: if isSupervisor(t)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+        allow delete: if false;
+      }
+
+      match /stockMovements/{id} {
+        allow read: if isMember(t);
+        allow create: if isMember(t) && request.resource.data.userId == request.auth.uid;
+        allow update, delete: if false;
+      }
+
+      match /dailyStats/{id} {
+        allow read: if isMember(t);
+        allow write: if isMember(t); // agregación client-side (plan Spark)
+      }
+
+      match /settings/{doc} {
+        allow read: if isMember(t);
+        allow write: if isAdmin(t) || (doc == 'counters' && isMember(t));
+      }
+
+      match /auditLogs/{id} {
+        allow read: if isSupervisor(t);
+        allow create: if isMember(t);
+        allow update, delete: if false;
+      }
+
+      match /invites/{code} {
+        allow read: if signedIn(); // el invitado necesita leer el código
+        allow create, delete: if isAdmin(t);
+        allow update: if signedIn(); // marcar como usado
+      }
+    }
+  }
+}
