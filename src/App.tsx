@@ -15,6 +15,7 @@ import StockPage from './pages/stock/StockPage';
 import SalesPage from './pages/sales/SalesPage';
 import ReportsPage from './pages/reports/ReportsPage';
 import SettingsPage from './pages/settings/SettingsPage';
+import SuperAdminPage from './pages/superadmin/SuperAdminPage';
 
 export default function App() {
   const init = useAuth((s) => s.init);
@@ -41,9 +42,7 @@ export default function App() {
             <Route path="/ventas" element={<SalesPage />} />
             <Route path="/reportes" element={<ReportsPage />} />
             <Route path="/configuracion" element={<SettingsPage />} />
-            import SuperAdminPage from './pages/superadmin/SuperAdminPage';
-// ...
-<Route path="/superadmin" element={<SuperAdminPage />} />
+            <Route path="/superadmin" element={<SuperAdminPage />} />
           </Route>
         </Route>
       </Routes>
